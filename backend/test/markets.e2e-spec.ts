@@ -59,7 +59,7 @@ describe('Markets (e2e)', () => {
     resolution_time: new Date('2025-01-01T12:00:00Z'),
     is_public: true,
     is_resolved: false,
-    resolved_outcome: undefined,
+    resolved_outcome: null as any, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
     is_cancelled: false,
     total_pool_stroops: '0',
     participant_count: 0,
@@ -71,6 +71,7 @@ describe('Markets (e2e)', () => {
     id: 'resolved-market-123e4567-e89b-12d3-a456-426614174000',
     on_chain_market_id: 'market_123456_def456',
     is_resolved: true,
+    resolved_outcome: 'Yes',
   };
 
   beforeEach(async () => {
@@ -146,34 +147,6 @@ describe('Markets (e2e)', () => {
 
       return request(app.getHttpServer())
         .get('/markets/non-existent-id/predictions')
-  describe('DELETE /markets/:id', () => {
-    it('should allow admin to cancel a market', async () => {
-      jest.spyOn(marketsRepository, 'findOne').mockResolvedValue(mockMarket);
-      jest.spyOn(marketsRepository, 'save').mockResolvedValue({
-        ...mockMarket,
-        is_cancelled: true,
-      });
-      jest.spyOn(usersRepository, 'findOne').mockResolvedValue(mockAdmin);
-
-      return request(app.getHttpServer())
-        .delete(`/markets/${mockMarket.id}`)
-        .set('Authorization', 'Bearer admin-token')
-        .expect(200)
-        .expect('Content-Type', /json/)
-        .expect((res) => {
-          const body = res.body as Market;
-          expect(body.is_cancelled).toBe(true);
-          expect(body.id).toBe(mockMarket.id);
-        });
-    });
-
-    it('should return 404 when trying to cancel non-existent market', async () => {
-      jest.spyOn(marketsRepository, 'findOne').mockResolvedValue(null);
-      jest.spyOn(usersRepository, 'findOne').mockResolvedValue(mockAdmin);
-
-      return request(app.getHttpServer())
-        .delete('/markets/non-existent-id')
-        .set('Authorization', 'Bearer admin-token')
         .expect(404)
         .expect('Content-Type', /json/)
         .expect((res) => {
@@ -239,6 +212,53 @@ describe('Markets (e2e)', () => {
               0,
             );
           });
+        });
+    });
+  });
+
+  describe('DELETE /markets/:id', () => {
+    it('should allow admin to cancel a market', async () => {
+      jest.spyOn(marketsRepository, 'findOne').mockResolvedValue(mockMarket);
+      jest.spyOn(marketsRepository, 'save').mockResolvedValue({
+        ...mockMarket,
+        is_cancelled: true,
+      });
+      jest.spyOn(usersRepository, 'findOne').mockResolvedValue(mockAdmin);
+
+      return request(app.getHttpServer())
+        .delete(`/markets/${mockMarket.id}`)
+        .set('Authorization', 'Bearer admin-token')
+        .expect(200)
+        .expect('Content-Type', /json/)
+        .expect((res) => {
+          const body = res.body as Market;
+          expect(body.is_cancelled).toBe(true);
+          expect(body.id).toBe(mockMarket.id);
+        });
+    });
+
+    it('should return 404 when trying to cancel non-existent market', async () => {
+      jest.spyOn(marketsRepository, 'findOne').mockResolvedValue(null);
+      jest.spyOn(usersRepository, 'findOne').mockResolvedValue(mockAdmin);
+
+      return request(app.getHttpServer())
+        .delete('/markets/non-existent-id')
+        .set('Authorization', 'Bearer admin-token')
+        .expect(404)
+        .expect('Content-Type', /json/)
+        .expect((res) => {
+          const body = res.body as {
+            success: boolean;
+            error: { code: number; message: string };
+            timestamp: string;
+          };
+
+          expect(body.success).toBe(false);
+          expect(body.error.code).toBe(404);
+          expect(body.error.message).toContain('not found');
+        });
+    });
+
     it('should return 409 when trying to cancel a resolved market', async () => {
       jest
         .spyOn(marketsRepository, 'findOne')

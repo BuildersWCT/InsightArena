@@ -22,17 +22,6 @@ import {
 export class MarketsService {
   private readonly logger = new Logger(MarketsService.name);
 
-  async getPredictionStats(marketId: string): Promise<PredictionStatsDto[]> {
-    await this.findByIdOrOnChainId(marketId);
-
-    // TODO: Call contract to get predictions
-    // For now, return mock data
-    return [
-      { outcome: 'Yes', count: 10, total_staked_stroops: '1000000' },
-      { outcome: 'No', count: 5, total_staked_stroops: '500000' },
-    ];
-  }
-
   constructor(
     @InjectRepository(Market)
     private readonly marketsRepository: Repository<Market>,
